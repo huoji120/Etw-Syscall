@@ -1,0 +1,55 @@
+shallow_clone: true
+
+os:
+  - Visual Studio 2015
+  - Visual Studio 2019
+
+platform: x64
+  - x64
+
+branches:
+  only:
+    - master
+
+install:
+  - set PATH=C:\Program Files\CMake\bin;%PATH%
+
+build:
+  verbosity: detailed
+
+configuration:
+  - Release
+  - Debug
+  
+environment:
+  artifactName: $(APPVEYOR_PROJECT_NAME)-$(APPVEYOR_REPO_COMMIT)-$(CONFIGURATION)
+  matrix:
+    - env_arch: "x64"
+    - env_arch: "x86"
+  
+before_build:
+  - mkdir build
+  - cd build
+  - if [%env_arch%]==[x64] (
+      cmake .. -A x64 )
+  - if [%env_arch%]==[x86] (
+      cmake .. -A Win32 )
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=%APPVEYOR_BUILD_FOLDER%/%APPVEYOR_REPO_COMMIT% ..
+
+build_script:
+  - cmake --build . --config %CONFIGURATION% --target install
+
+test_script:
+  - cp "..\tests\test_case3\bin\test_case3_32.exe" %APPVEYOR_BUILD_FOLDER%/%APPVEYOR_REPO_COMMIT%/
+  - cp "..\tests\test_case3\bin\test_case3_64.exe" %APPVEYOR_BUILD_FOLDER%/%APPVEYOR_REPO_COMMIT%/
+  - if [%env_arch%]==[x64] (
+      cp "..\tests\test_case2\payload.dll" %APPVEYOR_BUILD_FOLDER%/%APPVEYOR_REPO_COMMIT%/ )
+  - ctest -V
+  
+after_test:
+  - mkdir %artifactName%
+  - cp -r %APPVEYOR_BUILD_FOLDER%/%APPVEYOR_REPO_COMMIT%/* %artifactName%
+
+artifacts:
+  - path: build\%artifactName%
+  
